@@ -20,10 +20,9 @@ primarily to increase the number of supported platforms.  Escpecially
 since PyUSB is quite buggy and not the best choice when using a
 non-Linux environment, e.g., on Apple products. Furthermore, the
 rewriting process was useful to understand the interaction with the
-different components and to learn about overall
-structure.
+different components and to learn about the overall structure.
 
-Nevertheless, we thankDavid Carne for finding out the different data
+Nevertheless, we thank David Carne for finding out the different data
 values and data structures, which are needed to communicate with the
 device.
 
@@ -62,7 +61,7 @@ or, if you work in a UNIX environment, simply by using
 
 ## Usage
 
-```syfco [OPTIONS]...```
+```icedude [OPTIONS]...```
 
 ### Operations:
 
