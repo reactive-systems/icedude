@@ -15,7 +15,7 @@ module M25P10
   , writeDisable
   , getStatus
   , waitUntilDone
-  , chipErease
+  , chipErase
   , readContent
   , pageProgram  
   ) where
@@ -72,8 +72,8 @@ data Instruction =
   | READ      -- ^ Read Data Bytes
   | FAST_READ -- ^ Read Data Bytes at Higher Speed
   | PP        -- ^ Page Program
-  | SE        -- ^ Sector Erease
-  | BE        -- ^ Bulk Erease
+  | SE        -- ^ Sector Erase
+  | BE        -- ^ Bulk Erase
   | DP        -- ^ Deep Power-down
   | RES       -- ^ Release from Deep Power-down
 
@@ -175,12 +175,12 @@ waitUntilDone = do
 
 -----------------------------------------------------------------------------
 
--- | Ereases all content saved on the M25P10.
+-- | Erases all content saved on the M25P10.
 
-chipErease
+chipErase
   :: OP ()
 
-chipErease = do
+chipErase = do
   writeEnable
   void $ transfer BE 0
   waitUntilDone

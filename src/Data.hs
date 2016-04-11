@@ -106,7 +106,7 @@ data Configuration = Configuration
   { cHelp :: Bool
   , cList :: Bool
   , cId :: Maybe String
-  , cErease :: Bool
+  , cErase :: Bool
   , cVerbose :: Bool
   , cQuiet :: Bool
   , cMemOpt :: Maybe MemoryOperation
@@ -150,7 +150,7 @@ defaultCfg =
   { cHelp = False
   , cList = False
   , cId = Nothing
-  , cErease = False
+  , cErase = False
   , cVerbose = False
   , cQuiet = False
   , cMemOpt = Nothing

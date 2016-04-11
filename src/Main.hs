@@ -197,7 +197,7 @@ processDevice
 processDevice = do
   st <- get
   
-  when (cErease (config st)) erease
+  when (cErase (config st)) erase
 
   case cMemOpt (config st) of
     Nothing -> return ()
@@ -262,15 +262,15 @@ connectDevice = do
 
 -----------------------------------------------------------------------------    
 
-erease 
+erase 
   :: OP ()
 
-erease = do
+erase = do
   connectDevice 
 
-  report "Ereasing flash ..."
+  report "Erasing flash ..."
 
-  M25P10.chipErease
+  M25P10.chipErase
 
   reportLn " DONE"
 
@@ -283,7 +283,7 @@ flashFile bs = do
   connectDevice
 
   st <- get
-  unless (cErease (config st)) erease
+  unless (cErase (config st)) erase
 
   report "Writing image ..."
   
@@ -618,7 +618,7 @@ getCfg = do
     parseArgument a argument next = case argument of
       "-h" -> simple $ a { cHelp = True }
       "-l" -> simple $ a { cList = True }
-      "-e" -> simple $ a { cErease = True }
+      "-e" -> simple $ a { cErase = True }
       "-v" -> simple $ a { cVerbose = True, cQuiet = False }
       "-q" -> simple $ a { cQuiet = True, cVerbose = False }
       "-d" -> case next of
