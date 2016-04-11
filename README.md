@@ -1,4 +1,4 @@
-# iCEDude<br/>(Version 0.1.0.0)
+# iCEDude<br/>(Version 0.1.1.0)
 
 A programming tool for the iCE40 FPGA evaluation boards produced by
 [LATTICE Semiconductor](http://www.latticesemi.com/).
@@ -73,7 +73,3 @@ or, if you work in a UNIX environment, simply by using
 | ```-e```                        | Perform a chip erease.                                               |
 | ```-h```                        | Print this help and exit.                                            |
 | ```-v```                        | Quiet output.                                                        |
-
-## Note
-
-Reading an image from the device is not supported yet.

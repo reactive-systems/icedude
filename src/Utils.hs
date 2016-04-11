@@ -133,7 +133,7 @@ w42I bs =
 
 -----------------------------------------------------------------------------
 
--- | Shortcut proedure to verify a given statement.
+-- | Shortcut prcoedure to verify a given statement.
 
 verify
   :: Bool -> String -> OP ()
@@ -143,6 +143,18 @@ verify b str =
     st <- get
     cleanup st
     error str
+
+-----------------------------------------------------------------------------
+
+-- | Safe error message.
+
+sError
+  :: String -> OP a
+
+sError str = do
+  st <- get
+  cleanup st
+  error str    
 
 -----------------------------------------------------------------------------
 

@@ -28,7 +28,8 @@ module Data
   , timeout
   , vendorId
   , productId
-  , boardType  
+  , boardType
+  , m25p10MemSize  
   ) where
 
 -----------------------------------------------------------------------------
@@ -172,5 +173,9 @@ productId = "0007"
 -- | Board type, expected to be returned by the device.
 boardType :: String
 boardType = "iCE40"
+
+-- | M25P10 memory size in bytes.
+m25p10MemSize :: Int
+m25p10MemSize = 131072
 
 -----------------------------------------------------------------------------

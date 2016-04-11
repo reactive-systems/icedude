@@ -20,8 +20,8 @@ import Numeric
 
 import Data.Word
   ( Word8
-  )  
-  
+  )
+
 import Data.List
   ( sort
   , find
@@ -89,6 +89,10 @@ import Control.Exception
   , assert
   )
 
+import Data
+  ( m25p10MemSize
+  )  
+
 -----------------------------------------------------------------------------
 
 import qualified Data.Vector as V
@@ -116,6 +120,7 @@ import Utils
   , verify
   , splitBlocks
   , getHandle
+  , sError  
   )  
 
 -----------------------------------------------------------------------------
@@ -216,8 +221,8 @@ processDevice = do
         then "Verification failed."
         else "Verification successful."
 
-      ReadFLASH _        ->
-        error "Reading not supported yet"
+      ReadFLASH fp        -> do
+        readImage fp
 
       WriteFLASH fp      -> do
         bs <- filecontent fp
@@ -277,17 +282,89 @@ flashFile
 flashFile bs = do
   connectDevice
 
+  st <- get
+  unless (cErease (config st)) erease
+
   report "Writing image ..."
+  
+  bs' <- align bs
 
   let
-    xs = splitBlocks 256 bs
+    xs = splitBlocks 256 bs'
     ys = zip [0,256..(length xs - 1) * 256] xs
-    
+
   mapM_ (uncurry M25P10.pageProgram) ys
 
   reportLn " DONE"
 
-  verifyFile bs
+  verifyFile bs'
+
+  where
+    align (0x7E:0xAA:0x99:0x7E:_) = return bs
+    align (0xFF:0x00:xr) = skip xr
+    align _ = do
+      verify False " FAILED\n Invalid file format."
+      return bs
+
+    skip (0x00:0xFF:xr) = return xr
+    skip (_:xr) = skip xr
+    skip _ = do
+      verify False " FAILED\n Invalid file format."
+      return bs
+
+-----------------------------------------------------------------------------
+
+readImage
+  :: FilePath -> OP ()
+
+readImage fp = do
+  connectDevice
+
+  report "Reading image ..."
+
+  rs <- readBlockwise [] 0 [] 0
+
+  lift $ B.writeFile fp (B.pack rs)   
+
+  reportLn " DONE"
+
+  where
+    invalid = sError " FAILED\n No valid image on device."
+
+    readBlockwise :: [Word8] -> Int -> [Word8] -> Int -> OP [Word8]
+    readBlockwise a i overlap csec = do
+      verify (i < m25p10MemSize) " FAILED\n No valid image on device."
+      bs <- M25P10.readContent i 256
+      (rs,o,c,done) <- validate [] (overlap ++ bs) csec
+      if done then
+        return $ reverse $ rs ++ a
+      else
+        readBlockwise (rs ++ a) (i + 256) o c
+
+    validate :: [Word8] -> [Word8] -> Int -> OP ([Word8], [Word8], Int, Bool)
+    validate a (0x7E:0xAA:0x99:0x7E:br) 0 = validate (0x7E:0x99:0xAA:0x7E:a) br 3
+    validate a (0xFF:0x00:br)           0 = validate (0x00:0xFF:a) br 1
+    validate _ _                        0 = invalid
+
+    validate a (0x00:0xFF:br) 1 = validate (0xFF:0x00:a) br 2
+    validate a [0x00]         1 = return (a,[0x00],1,False)
+    validate a []             1 = return (a,[],1,False)
+    validate a (b:br)         1 = validate (b:a) br 1
+
+    validate a (0x7E:0xAA:0x99:0x7E:br) 2 = validate (0x7E:0x99:0xAA:0x7E:a) br 3
+    validate a [0x7E,0xAA,0x99]         2 = return (a,[0x7e,0xAA,0x99],2,False)
+    validate a [0x7E,0xAA]              2 = return (a,[0x7e,0xAA],2,False)
+    validate a [0x7E]                   2 = return (a,[0x7e],2,False)
+    validate a []                       2 = return (a,[],2,False)
+    validate _ _                        2 = invalid
+
+    validate a (c:br) _ 
+      | length br < fromIntegral c `mod` 16 = return (a,c:br,3,False)
+      | c == 0x01 && head br == 0x06           = return (0x06:0x01:a,[],3,True)
+      | otherwise                           = 
+          let (rs,ls) = splitAt (fromIntegral c `mod` 16) br
+          in validate (reverse rs ++ (c:a)) ls 3 
+    validate a [] _ = return (a,[],3,False)
 
 -----------------------------------------------------------------------------  
 
@@ -303,11 +380,27 @@ verifyFile bs = do
 
   st <- get
   if cQuiet (config st) then
-    when (rs /= bs) $ error "Verification failed"
+    when (rs /= bs) $ do
+      cleanup st
+      verificationFault rs
   else  
     verify (rs == bs) " FAILED"
 
   reportLn " DONE"
+
+  where
+    verificationFault rs 
+      | length rs < length bs = 
+        error "Verification failed (read image smaller than written image)"
+      | length rs > length bs = 
+        error "Verification failed (read image larger than written image)"
+      | otherwise = 
+        let cs = zip3 [0,1..length rs] rs bs 
+        in case find (\(_,a,b) -> a /= b) cs of
+          Nothing      -> error "strange"
+          Just (i,a,b) -> 
+            error $ "Verification failed ([" ++ show i ++ "] " 
+                    ++ show a ++ " != " ++ show b ++ ")"
 
 -----------------------------------------------------------------------------  
 
