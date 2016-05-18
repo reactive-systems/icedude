@@ -37,6 +37,8 @@ Haskell Compiler (GHC).
 
 Dependencies:
 
+* [libusb](http://www.libusb.org/) (on mac: `brew install libusb`)
+
 * [GHC](https://www.haskell.org/ghc/) (recommended version: >= 7.6.1, [Haskell2010](https://wiki.haskell.org/Definition))
  
 * [usb](https://hackage.haskell.org/package/usb) (recommended version: >= 1.3)
