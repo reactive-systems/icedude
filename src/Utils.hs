@@ -133,7 +133,7 @@ w42I bs =
 
 -----------------------------------------------------------------------------
 
--- | Shortcut prcoedure to verify a given statement.
+-- | Shortcut procedure to verify a given statement.
 
 verify
   :: Bool -> String -> OP ()
@@ -313,7 +313,7 @@ reportLn str = do
 
 -----------------------------------------------------------------------------
 
--- | Debuggin shortcut.    
+-- | Debugging shortcut.    
 
 debug
   :: String -> OP ()
@@ -326,7 +326,7 @@ debug str = do
 
 -----------------------------------------------------------------------------
     
--- | Debuggin shortcut including a newline.
+-- | Debugging shortcut including a newline.
 
 debugLn
   :: String -> OP ()

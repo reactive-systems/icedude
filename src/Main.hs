@@ -322,7 +322,10 @@ readImage fp = do
 
   report "Reading image ..."
 
-  rs <- readBlockwise [] 0 [] 0
+  st <- get
+  rs <- if (cVerify $ config st) 
+       then readBlockwise [] 0 [] 0
+       else readAll [] 0 
 
   lift $ B.writeFile fp (B.pack rs)   
 
@@ -340,6 +343,15 @@ readImage fp = do
         return $ reverse $ rs ++ a
       else
         readBlockwise (rs ++ a) (i + 256) o c
+
+    readAll :: [Word8] -> Int -> OP [Word8]
+    readAll a i = 
+      if (i + 256 <= m25p10MemSize) then do
+        bs <- M25P10.readContent i 256
+        readAll (reverse bs ++ a) (i + 256) 
+      else do
+        bs <- M25P10.readContent i (m25p10MemSize - i)
+        return $ reverse $ (reverse bs ++ a)
 
     validate :: [Word8] -> [Word8] -> Int -> OP ([Word8], [Word8], Int, Bool)
     validate a (0x7E:0xAA:0x99:0x7E:br) 0 = validate (0x7E:0x99:0xAA:0x7E:a) br 3
@@ -621,6 +633,7 @@ getCfg = do
       "-e" -> simple $ a { cErase = True }
       "-v" -> simple $ a { cVerbose = True, cQuiet = False }
       "-q" -> simple $ a { cQuiet = True, cVerbose = False }
+      "-a" -> simple $ a { cVerify = False }
       "-d" -> case next of
         Nothing -> Left "[-d] Missing device ID."
         Just x  -> arg $ a { cId = Just x }
@@ -704,6 +717,9 @@ prHelp = do
     , "                 similar to the one used for writing to the memory."
     , ""
     , "  -e,                             : Perform a chip erease."
+    , "  -a                              : Disables bitstream verification and"
+    , "                                    reads the whole memory block. (Use"
+    , "                                    this for debugging purposes only.)"  
     , "  -h,                             : Print this help and exit."
     , "  -v,                             : Verbose output."
     , "  -q,                             : Quiet output."

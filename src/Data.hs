@@ -110,6 +110,7 @@ data Configuration = Configuration
   , cVerbose :: Bool
   , cQuiet :: Bool
   , cMemOpt :: Maybe MemoryOperation
+  , cVerify :: Bool  
   } 
 
 -----------------------------------------------------------------------------
@@ -154,6 +155,7 @@ defaultCfg =
   , cVerbose = False
   , cQuiet = False
   , cMemOpt = Nothing
+  , cVerify = True            
   }
 
 -----------------------------------------------------------------------------
