@@ -1,4 +1,4 @@
-# iCEDude<br/>(Version 0.1.1.0)
+# iCEDude<br/>(Version 0.1.1.1)
 
 A programming tool for the iCE40 FPGA evaluation boards produced by
 [LATTICE Semiconductor](http://www.latticesemi.com/).
