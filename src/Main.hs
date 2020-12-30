@@ -67,6 +67,10 @@ import System.Environment
   ( getArgs
   , getProgName  
   )
+
+import Control.Concurrent
+  ( threadDelay
+  )
   
 import Control.Monad.State
   ( when
@@ -240,7 +244,6 @@ processDevice = do
       return $ B.unpack c
   
 -----------------------------------------------------------------------------    
-
 connectDevice
   :: OP ()
 
@@ -248,6 +251,7 @@ connectDevice = do
   report "Connecting to device ..."
   
   GPIO.reset
+  lift $ threadDelay 20000
 
   SPI.setSpeed 4000000
   SPI.setMode 0x00
@@ -280,8 +284,6 @@ flashFile
   :: [Word8] -> OP ()
 
 flashFile bs = do
-  connectDevice
-
   st <- get
   unless (cErase (config st)) erase
 
