@@ -67,11 +67,11 @@ or, if you work in a UNIX environment, simply by using
 
 ### Operations:
 
-| Command                         | Description                                                          |
-| ------------------------------- | -------------------------------------------------------------------- |
-| ```-l```                        | List all supported devices.                                          |
-| ```-d <id>```                   | Select a specific device.                                            |
-| ```-U <memtype>:r|w|v:<data>``` | Memory operation specification.                                      |
-| ```-e```                        | Perform a chip erase.                                               |
-| ```-h```                        | Print this help and exit.                                            |
-| ```-v```                        | Quiet output.                                                        |
+| Command                           | Description                                                          |
+| --------------------------------- | -------------------------------------------------------------------- |
+| ```-l```                          | List all supported devices.                                          |
+| ```-d <id>```                     | Select a specific device.                                            |
+| ```-U <memtype>:r\|w\|v:<data>``` | Memory operation specification.                                      |
+| ```-e```                          | Perform a chip erase.                                                |
+| ```-h```                          | Print this help and exit.                                            |
+| ```-v```                          | Quiet output.                                                        |
