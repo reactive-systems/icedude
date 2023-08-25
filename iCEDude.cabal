@@ -1,5 +1,5 @@
 name:                iCEDude
-version:             0.1.2.0
+version:             0.1.3.0
 synopsis:            Programming tool for the ICE40 board
 description:         Programming tool for the ICE40 board
 license:             MIT
@@ -16,9 +16,16 @@ executable iCEDude
   build-depends:     base >=4.7 && <5.0,
                      usb >=1.3 && <1.4,
                      mtl >=2.2 && <2.3,
-                     bytestring >=0.10 && <0.11,
+                     bytestring >=0.10 && <0.12,
                      directory >=1.2 && <1.4,
                      transformers >=0.4 && <0.6,
                      vector >=0.10 && <0.13
   default-language:  Haskell2010
+  other-modules:     Commands
+                     Data
+                     GPIO
+                     M25P10
+                     SPI
+                     Utils
+                     VIO
   hs-source-dirs:    src
