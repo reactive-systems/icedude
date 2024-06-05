@@ -3,9 +3,9 @@
 -- Module      :  GPIO
 -- License     :  MIT (see the LICENSE file)
 -- Maintainer  :  Felix Klein (klein@react.uni-saarland.de)
--- 
+--
 -- General Purpose Input / Output Interface.
--- 
+--
 -----------------------------------------------------------------------------
 
 module GPIO
@@ -15,13 +15,16 @@ module GPIO
 
 -----------------------------------------------------------------------------
 
+import Control.Monad
+  ( when
+  , unless
+  )
+
 import Control.Monad.State
   ( get
   , put
-  , when
-  , unless  
   )
-  
+
 import Control.Exception
   ( assert
   )
@@ -30,23 +33,23 @@ import Control.Exception
 
 import Data
   ( ST(..)
-  , OP  
+  , OP
   )
-    
+
 import Commands
   ( Command(..)
   , SubCommand(..)
-  )  
+  )
 
 import Utils
   ( sendCmd
   , pureSendCmd
-  , verify  
+  , verify
   )
 
 -----------------------------------------------------------------------------
 
--- | Set the reset signal to reset the device. 
+-- | Set the reset signal to reset the device.
 
 reset
   :: OP ()
@@ -57,7 +60,7 @@ reset = do
   (sc,_) <- sendCmd GPIO DIR [0x00, 0x01, 0x00, 0x00, 0x00]
   verify (sc == 0)
     "Setting direction failed"
-    
+
   pureSendCmd GPIO VALUE [0x00, 0x00, 0x00, 0x00, 0x00]
 
   st <- get
@@ -70,7 +73,7 @@ reset = do
 
 -----------------------------------------------------------------------------
 
--- | Release the reset signal to restart the device.  
+-- | Release the reset signal to restart the device.
 
 releaseReset
   :: OP ()
@@ -96,15 +99,15 @@ initInterface
 initInterface = do
   st <- get
   unless (fGPIOOpen st) $ do
-    pureSendCmd GPIO OPEN [0x00] 
-    
+    pureSendCmd GPIO OPEN [0x00]
+
     put st {
       fGPIOOpen = True,
       cleanup = do
-        (sc, y) <- sendCmd GPIO CLOSE [0x00] 
+        (sc, y) <- sendCmd GPIO CLOSE [0x00]
         verify (sc == 0 && null y)
           "Closing SPI port failed"
         cleanup st
       }
 
------------------------------------------------------------------------------    
+-----------------------------------------------------------------------------

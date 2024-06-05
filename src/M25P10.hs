@@ -3,9 +3,9 @@
 -- Module      :  SPI
 -- License     :  MIT (see the LICENSE file)
 -- Maintainer  :  Felix Klein (klein@react.uni-saarland.de)
--- 
+--
 -- M25P10 Memory Interface.
--- 
+--
 -----------------------------------------------------------------------------
 
 module M25P10
@@ -17,7 +17,7 @@ module M25P10
   , waitUntilDone
   , chipErase
   , readContent
-  , pageProgram  
+  , pageProgram
   ) where
 
 -----------------------------------------------------------------------------
@@ -26,16 +26,19 @@ import Data.Word
   ( Word8
   )
 
-import Control.Monad.State
+import Control.Monad
   ( void
   , when
-  , lift
   )
-  
+
+import Control.Monad.State
+  ( lift
+  )
+
 import Control.Concurrent
   ( threadDelay
   )
-  
+
 import Control.Exception
   ( assert
   )
@@ -48,16 +51,16 @@ import Data
   , MemTypeID
   , MemCapacity
   , Address
-  , Size  
+  , Size
   )
-  
+
 import Utils
   ( i2W3
   )
 
 -----------------------------------------------------------------------------
 
-import qualified SPI 
+import qualified SPI
 
 -----------------------------------------------------------------------------
 
@@ -125,13 +128,13 @@ getId
   :: OP (ManufacturerID, MemTypeID, MemCapacity)
 
 getId = do
-  bs <- transfer RDID 4 
+  bs <- transfer RDID 4
   let [_, b1, b2, b3] = bs
   return (b1, b2, b3)
 
 -----------------------------------------------------------------------------
 
--- | Enables to write data to the M25P10.  
+-- | Enables to write data to the M25P10.
 
 writeEnable
   :: OP ()
@@ -141,7 +144,7 @@ writeEnable =
 
 -----------------------------------------------------------------------------
 
--- | Disables to write data to the M25P10.  
+-- | Disables to write data to the M25P10.
 
 writeDisable
   :: OP ()
@@ -162,7 +165,7 @@ getStatus = do
 
 -----------------------------------------------------------------------------
 
--- | Waits until a pending operation of the M25P10 finished.  
+-- | Waits until a pending operation of the M25P10 finished.
 
 waitUntilDone
   :: OP ()
@@ -207,12 +210,12 @@ pageProgram
 
 pageProgram addr bs = do
   writeEnable
-  
+
   assert (addr `mod` 256 == 0) $ return ()
   assert (length bs <= 256) $ return ()
 
   void $ SPI.transferIO ([x2W PP] ++ (i2W3 addr) ++ bs) 0
 
   waitUntilDone
-  
------------------------------------------------------------------------------  
+
+-----------------------------------------------------------------------------

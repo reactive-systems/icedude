@@ -3,9 +3,9 @@
 -- Module      :  Utils
 -- License     :  MIT (see the LICENSE file)
 -- Maintainer  :  Felix Klein (klein@react.uni-saarland.de)
--- 
+--
 -- Utility Functions.
--- 
+--
 -----------------------------------------------------------------------------
 
 module Utils where
@@ -15,18 +15,18 @@ module Utils where
 import Data.Word
   ( Word8
   )
-  
+
 import System.IO
   ( hFlush
-  , stdout  
+  , stdout
   )
-  
+
 import System.USB
   ( Status(..)
   , DeviceHandle
   , EndpointAddress
   , openDevice
-  , closeDevice  
+  , closeDevice
   , setConfig
   , claimInterface
   , releaseInterface
@@ -36,14 +36,17 @@ import System.USB
   , endpointAddress
   )
 
+import Control.Monad
+  ( when
+  , unless
+  )
+
 import Control.Monad.State
   ( get
   , put
-  , when  
-  , unless
   , lift
   )
-  
+
 import Control.Exception
   ( assert
   )
@@ -57,18 +60,18 @@ import Data.ByteString
 
 import Data
   ( Configuration(..)
-  , ST(..)    
+  , ST(..)
   , CmdStatus
-  , OP    
+  , OP
   , timeout
-  )  
+  )
 
 import Commands
   ( Command
   , SubCommand
   , cmd2W
   , sub2W
-  )  
+  )
 
 -----------------------------------------------------------------------------
 
@@ -77,11 +80,11 @@ import Commands
 splitBlocks
   :: Int -> [Word8] -> [[Word8]]
 
-splitBlocks n = splitBlocks' [] 
+splitBlocks n = splitBlocks' []
   where
     splitBlocks' a xs = case xs of
       [] -> reverse a
-      _  -> let (x,y) = splitAt n xs 
+      _  -> let (x,y) = splitAt n xs
            in splitBlocks' (x : a) y
 
 -----------------------------------------------------------------------------
@@ -91,34 +94,34 @@ splitBlocks n = splitBlocks' []
 i2W4
   :: Int -> [Word8]
 
-i2W4 n = 
+i2W4 n =
   [ i2W $ n `mod` 256
   , i2W $ (n `div` 256) `mod` 256
   , i2W $ (n `div` (256 * 256)) `mod` 256
   , i2W $ (n `div` (256 * 256 * 256)) `mod` 256
   ]
-  
+
 -----------------------------------------------------------------------------
 
 -- | Converts an integer into a list of three bytes.
-  
+
 i2W3
   :: Int -> [Word8]
 
-i2W3 n = 
+i2W3 n =
   [ i2W $ n `mod` 256
   , i2W $ (n `div` 256) `mod` 256
-  , i2W $ (n `div` (256 * 256)) `mod` 256 
+  , i2W $ (n `div` (256 * 256)) `mod` 256
   ]
-  
------------------------------------------------------------------------------  
+
+-----------------------------------------------------------------------------
 
 -- | Converts a small integer into a single byte.
 
 i2W
   :: Int -> Word8
 
-i2W x =  assert (x < 256) $ fromIntegral x         
+i2W x =  assert (x < 256) $ fromIntegral x
 
 -----------------------------------------------------------------------------
 
@@ -154,11 +157,11 @@ sError
 sError str = do
   st <- get
   cleanup st
-  error str    
+  error str
 
 -----------------------------------------------------------------------------
 
--- | Opens a connection to a device and returns it's handle.    
+-- | Opens a connection to a device and returns it's handle.
 
 getHandle
   :: OP DeviceHandle
@@ -196,7 +199,7 @@ readbulk ep n = do
 
 -----------------------------------------------------------------------------
 
--- | Write some data from to endpoint.    
+-- | Write some data from to endpoint.
 
 writebulk
   :: EndpointAddress -> [Word8] -> OP ()
@@ -217,22 +220,22 @@ readCmd
 
 readCmd n = do
   st <- get
-  readbulk (endpointAddress $ dCmdIn st) n 
+  readbulk (endpointAddress $ dCmdIn st) n
 
 -----------------------------------------------------------------------------
 
--- | Write some data to the Command-Out endpoint.  
+-- | Write some data to the Command-Out endpoint.
 
 writeCmd
   :: [Word8] -> OP ()
 
 writeCmd bs = do
   st <- get
-  writebulk (endpointAddress $ dCmdOut st) $ bs 
+  writebulk (endpointAddress $ dCmdOut st) $ bs
 
 -----------------------------------------------------------------------------
-  
--- | Read some data from the Data-In endpoint.  
+
+-- | Read some data from the Data-In endpoint.
 
 readData
   :: Int -> OP [Word8]
@@ -242,24 +245,24 @@ readData n = do
   readbulk (endpointAddress $ dDataIn st) n
 
 -----------------------------------------------------------------------------
-  
--- | Write some data to the Data-Out endpoint.    
+
+-- | Write some data to the Data-Out endpoint.
 
 writeData
   :: [Word8] -> OP ()
 
 writeData bs = do
   st <- get
-  writebulk (endpointAddress $ dDataOut st) bs 
+  writebulk (endpointAddress $ dDataOut st) bs
 
 -----------------------------------------------------------------------------
 
 -- | Sends a command while ignoring the result.
-  
+
 pureSendCmd
   :: Command -> SubCommand -> [Word8] -> OP ()
 
-pureSendCmd cmd sub bs = 
+pureSendCmd cmd sub bs =
   let w = i2W $ length bs + 2
   in writeCmd $ w : cmd2W cmd : sub2W sub : bs
 
@@ -277,14 +280,14 @@ sendCmd cmd sub bs = do
     case xs of
       []     -> error "Received message to small"
       size:rx -> do
-      
+
         verify (fromIntegral size == length rx)
           "Incorrect response"
-        
+
         case rx of
           []   -> error "Incorrect response"
-          y:yr -> return (y,yr)        
- 
+          y:yr -> return (y,yr)
+
 -----------------------------------------------------------------------------
 
 -- | Printing shortcut.
@@ -296,11 +299,11 @@ report str = do
   st <- get
   unless (cQuiet $ config st) $ lift $ do
     putStr str
-    hFlush stdout        
+    hFlush stdout
 
 -----------------------------------------------------------------------------
 
--- | Printing shortcut including a newline.    
+-- | Printing shortcut including a newline.
 
 reportLn
   :: String -> OP ()
@@ -309,11 +312,11 @@ reportLn str = do
   st <- get
   unless (cQuiet $ config st) $ lift $ do
     putStrLn str
-    hFlush stdout            
+    hFlush stdout
 
 -----------------------------------------------------------------------------
 
--- | Debugging shortcut.    
+-- | Debugging shortcut.
 
 debug
   :: String -> OP ()
@@ -322,10 +325,10 @@ debug str = do
   st <- get
   when (cVerbose $ config st) $ lift $ do
     putStr str
-    hFlush stdout            
+    hFlush stdout
 
 -----------------------------------------------------------------------------
-    
+
 -- | Debugging shortcut including a newline.
 
 debugLn
@@ -335,6 +338,6 @@ debugLn str = do
   st <- get
   when (cVerbose $ config st) $ lift $ do
     putStrLn str
-    hFlush stdout            
-  
+    hFlush stdout
+
 -----------------------------------------------------------------------------

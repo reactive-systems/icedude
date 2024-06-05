@@ -3,9 +3,9 @@
 -- Module      :  Main
 -- License     :  MIT (see the LICENSE file)
 -- Maintainer  :  Felix Klein (klein@react.uni-saarland.de)
--- 
+--
 -- Main program.
--- 
+--
 -----------------------------------------------------------------------------
 
 module Main
@@ -26,68 +26,71 @@ import Data.List
   ( sort
   , find
   )
-  
+
 import Data.Maybe
   ( catMaybes
   , isJust
   , fromJust
   )
-  
+
 import System.USB
   ( Device
   , ControlSetup(..)
   , Recipient(..)
   , RequestType(..)
   , USBException(..)
-  , TransferDirection(..)  
+  , TransferDirection(..)
   , newCtx
   , getDevices
   , getDeviceDesc
-  , getConfigDesc    
+  , getConfigDesc
   , deviceVendorId
   , deviceProductId
   , transferDirection
   , endpointAddress
-  , interfaceEndpoints    
+  , interfaceEndpoints
   , endpointNumber
   , readControlExact
   , deviceNumConfigs
-  , configInterfaces  
+  , configInterfaces
   )
-  
+
 import System.Exit
   ( exitSuccess
   )
-  
+
 import System.Directory
   ( doesFileExist
   )
-  
+
 import System.Environment
   ( getArgs
-  , getProgName  
+  , getProgName
   )
 
 import Control.Concurrent
   ( threadDelay
   )
-  
-import Control.Monad.State
-  ( when
+
+import Control.Monad
+  ( liftM
   , unless
-  , get
   , void
-  , lift
-  , liftM  
-  , runStateT
-  , execStateT  
+  , when
   )
-    
+
+import Control.Monad.State
+  ( get
+  , lift
+  , runStateT
+  , execStateT
+  )
+
 import Control.Monad.Trans.Maybe
   ( MaybeT
-  , runMaybeT  
+  , runMaybeT
   )
-  
+
 import Control.Exception
   ( catch
   , assert
@@ -95,7 +98,7 @@ import Control.Exception
 
 import Data
   ( m25p10MemSize
-  )  
+  )
 
 -----------------------------------------------------------------------------
 
@@ -113,9 +116,9 @@ import Data
   , vendorId
   , productId
   , boardType
-  , defaultCfg  
+  , defaultCfg
   )
-  
+
 import Utils
   ( report
   , reportLn
@@ -124,15 +127,15 @@ import Utils
   , verify
   , splitBlocks
   , getHandle
-  , sError  
-  )  
+  , sError
+  )
 
 -----------------------------------------------------------------------------
 
 import qualified SPI
 import qualified VIO
-import qualified GPIO 
-import qualified M25P10 
+import qualified GPIO
+import qualified M25P10
 
 -----------------------------------------------------------------------------
 
@@ -151,7 +154,7 @@ main = do
   devs <- findICE40Devices c
 
   if cList c then do
-    
+
     unless (cQuiet c) $ do
       putStr "Looking for iCE40 devices: "
       if null devs then
@@ -164,12 +167,12 @@ main = do
 
     mapM_ (\(x,_) -> putStrLn ("  * " ++ x)) devs
     mapM_ (\(_,x) -> runStateT (get >>= cleanup) x) devs
-    
+
   else case devs of
-    []          -> 
+    []          ->
       unless (cQuiet c) $ putStrLn "No device found."
-    [(dId,st)] -> 
-      if isJust (cId c) && dId /= fromJust (cId c) 
+    [(dId,st)] ->
+      if isJust (cId c) && dId /= fromJust (cId c)
       then do
         void $ runStateT (cleanup st) st
         error ("No such device: " ++ fromJust (cId c))
@@ -181,7 +184,7 @@ main = do
         unless (cQuiet c) $ putStrLn "Multiple devices found:"
         mapM_ (\(x,_) -> putStrLn ("  * " ++ x)) devs
         mapM_ (\(_,x) -> runStateT (cleanup x) x) devs
-        unless (cQuiet c) $ 
+        unless (cQuiet c) $
           putStrLn "Select a specific device using the \"-d\" option."
       Just dId -> case find (\(y,_) -> y == dId) devs of
           Nothing  -> do
@@ -200,28 +203,28 @@ processDevice
 
 processDevice = do
   st <- get
-  
+
   when (cErase (config st)) erase
 
   case cMemOpt (config st) of
     Nothing -> return ()
     Just mo -> case mo of
-      
+
       ReadVIO r       -> do
         [x] <- VIO.readRegister r 1
         let s = showHex x ""
-            
+
         if length s == 1 then
           lift $ putStrLn (" 0x0" ++ s)
         else
-          lift $ putStrLn (" 0x" ++ s)        
+          lift $ putStrLn (" 0x" ++ s)
 
       WriteVIO (r,d)  ->
         VIO.writeRegister r [d]
 
       VerifyVIO (r,d) -> do
         [x] <- VIO.readRegister r 1
-        lift $ putStrLn $ if x /= d 
+        lift $ putStrLn $ if x /= d
         then "Verification failed."
         else "Verification successful."
 
@@ -242,14 +245,14 @@ processDevice = do
       unless b $ error ("File does not exist: " ++ file)
       c <- lift $ B.readFile file
       return $ B.unpack c
-  
------------------------------------------------------------------------------    
+
+-----------------------------------------------------------------------------
 connectDevice
   :: OP ()
 
 connectDevice = do
   report "Connecting to device ..."
-  
+
   GPIO.reset
   lift $ threadDelay 20000
 
@@ -257,20 +260,20 @@ connectDevice = do
   SPI.setMode 0x00
 
   M25P10.wakeup
-  
+
   (mId, tId, ca) <- M25P10.getId
   verify (mId == 0x20 && tId == 0x20 && ca == 0x11)
     "\nIncompatible Memory Device (M25P10 expected)"
 
   reportLn " DONE"
 
------------------------------------------------------------------------------    
+-----------------------------------------------------------------------------
 
-erase 
+erase
   :: OP ()
 
 erase = do
-  connectDevice 
+  connectDevice
 
   report "Erasing flash ..."
 
@@ -288,7 +291,7 @@ flashFile bs = do
   unless (cErase (config st)) erase
 
   report "Writing image ..."
-  
+
   bs' <- align bs
 
   let
@@ -325,11 +328,11 @@ readImage fp = do
   report "Reading image ..."
 
   st <- get
-  rs <- if (cVerify $ config st) 
+  rs <- if (cVerify $ config st)
        then readBlockwise [] 0 [] 0
-       else readAll [] 0 
+       else readAll [] 0
 
-  lift $ B.writeFile fp (B.pack rs)   
+  lift $ B.writeFile fp (B.pack rs)
 
   reportLn " DONE"
 
@@ -347,10 +350,10 @@ readImage fp = do
         readBlockwise (rs ++ a) (i + 256) o c
 
     readAll :: [Word8] -> Int -> OP [Word8]
-    readAll a i = 
+    readAll a i =
       if (i + 256 <= m25p10MemSize) then do
         bs <- M25P10.readContent i 256
-        readAll (reverse bs ++ a) (i + 256) 
+        readAll (reverse bs ++ a) (i + 256)
       else do
         bs <- M25P10.readContent i (m25p10MemSize - i)
         return $ reverse $ (reverse bs ++ a)
@@ -372,22 +375,22 @@ readImage fp = do
     validate a []                       2 = return (a,[],2,False)
     validate _ _                        2 = invalid
 
-    validate a (c:br) _ 
+    validate a (c:br) _
       | length br < fromIntegral c `mod` 16 = return (a,c:br,3,False)
       | c == 0x01 && head br == 0x06           = return (0x06:0x01:a,[],3,True)
-      | otherwise                           = 
+      | otherwise                           =
           let (rs,ls) = splitAt (fromIntegral c `mod` 16) br
-          in validate (reverse rs ++ (c:a)) ls 3 
+          in validate (reverse rs ++ (c:a)) ls 3
     validate a [] _ = return (a,[],3,False)
 
------------------------------------------------------------------------------  
+-----------------------------------------------------------------------------
 
 verifyFile
   :: [Word8] -> OP ()
 
 verifyFile bs = do
   connectDevice
-  
+
   report "Verifying ..."
 
   rs <- M25P10.readContent 0x00 $ length bs
@@ -397,31 +400,31 @@ verifyFile bs = do
     when (rs /= bs) $ do
       cleanup st
       verificationFault rs
-  else  
+  else
     verify (rs == bs) " FAILED"
 
   reportLn " DONE"
 
   where
-    verificationFault rs 
-      | length rs < length bs = 
+    verificationFault rs
+      | length rs < length bs =
         error "Verification failed (read image smaller than written image)"
-      | length rs > length bs = 
+      | length rs > length bs =
         error "Verification failed (read image larger than written image)"
-      | otherwise = 
-        let cs = zip3 [0,1..length rs] rs bs 
+      | otherwise =
+        let cs = zip3 [0,1..length rs] rs bs
         in case find (\(_,a,b) -> a /= b) cs of
           Nothing      -> error "strange"
-          Just (i,a,b) -> 
-            error $ "Verification failed ([" ++ show i ++ "] " 
+          Just (i,a,b) ->
+            error $ "Verification failed ([" ++ show i ++ "] "
                     ++ show a ++ " != " ++ show b ++ ")"
 
------------------------------------------------------------------------------  
+-----------------------------------------------------------------------------
 
 ctrlBoardType
   :: OP (Maybe String)
 
-ctrlBoardType = 
+ctrlBoardType =
   let cBrdType = ControlSetup Standard ToDevice 0xE2 0x00 0x00
   in do
     h <- getHandle
@@ -430,7 +433,7 @@ ctrlBoardType =
        readControlExact h cBrdType 8 timeout)
       ((\_ -> return Nothing) :: USBException -> IO (Maybe String))
 
------------------------------------------------------------------------------    
+-----------------------------------------------------------------------------
 
 ctrlSerial
   :: OP (Maybe String)
@@ -453,29 +456,29 @@ initDevice
 initDevice c dev = do
   lift $ when (cVerbose c ) $ putStr
     "  Checking interface ..."
-  
+
   dDesc <- lift $ getDeviceDesc dev
-  
+
   checkthat (deviceNumConfigs dDesc == 1)
-    "Device has no configuration" 
-  
+    "Device has no configuration"
+
   cDesc <- lift $ getConfigDesc dev 0
 
   let iifaces = V.toList $ configInterfaces cDesc
-      
+
   checkthat (length iifaces == 1)
-    "Device has no inteface" 
-  
+    "Device has no inteface"
+
   let ifaces = V.toList $ head  iifaces
   checkthat (length ifaces == 1)
-    "Device has no inteface" 
-  
+    "Device has no inteface"
+
   let
     iDesc = head ifaces
     endpoints = V.toList $ interfaceEndpoints iDesc
-  
+
   checkthat (length endpoints == 4)
-    "Invalid number of endpoints" 
+    "Invalid number of endpoints"
 
   checkthat ([1,2,3,4] == sort (map endpoint endpoints))
     "Some Endpoint is missing"
@@ -485,16 +488,16 @@ initDevice c dev = do
     cmdOut = findEp 1 endpoints
     dataIn = findEp 4 endpoints
     dataOut = findEp 3 endpoints
-    
+
   checkthat (tdir cmdIn == In)
     "Invalid transfer direction of endpoint 2"
-    
+
   checkthat (tdir cmdOut == Out)
-    "Invalid transfer direction of endpoint 1" 
-    
+    "Invalid transfer direction of endpoint 1"
+
   checkthat (tdir dataIn == In)
     "Invalid transfer direction of endpoint 4"
-    
+
   checkthat (tdir dataOut == Out)
     "Invalid transfer direction of endpoint 3"
 
@@ -513,18 +516,18 @@ initDevice c dev = do
     dIface = iDesc,
     dCmdIn = cmdIn,
     dCmdOut = cmdOut,
-    dDataIn = dataIn, 
+    dDataIn = dataIn,
     dDataOut = dataOut,
     cleanup = return ()
     }
 
   where
     tdir = transferDirection . endpointAddress
-    
+
     endpoint = endpointNumber . endpointAddress
-    
+
     findEp x = fromJust . find ((x ==) . endpoint)
-    
+
     checkthat b str = do
       when (not b && cVerbose c) $ lift $ do
         putStr "  "
@@ -532,7 +535,7 @@ initDevice c dev = do
         putStrLn ". Skipping."
       unless b $ fail ""
 
------------------------------------------------------------------------------     
+-----------------------------------------------------------------------------
 
 findICE40Devices
   :: Configuration -> IO [(String,ST)]
@@ -542,16 +545,16 @@ findICE40Devices c = do
   devs <- getDevices ctx
   devs' <- mapM isICE40USB $ V.toList devs
   return $ catMaybes devs'
-  
+
   where
     isICE40USB dev = do
       desc <- getDeviceDesc dev
-  
+
       if idToStr (deviceVendorId desc) /= vendorId ||
          idToStr (deviceProductId desc) /= productId then
         return Nothing
       else do
-        when (cVerbose c) $ putStrLn 
+        when (cVerbose c) $ putStrLn
           "Found potential iCE40 device."
 
         msti <- runMaybeT $ initDevice c dev
@@ -560,7 +563,7 @@ findICE40Devices c = do
           Nothing  -> return Nothing
           Just sti -> do
             (info, ste) <- runStateT getDevInfo sti
- 
+
             case info of
               Nothing -> do
                 void $ execStateT (cleanup ste) ste
@@ -577,15 +580,15 @@ findICE40Devices c = do
         Nothing -> do
           debugLn " Cannot read board id. Skipping."
           return Nothing
-        Just x  -> 
+        Just x  ->
           if x /= boardType then do
-            debugLn " Missmatch. Skipping." 
+            debugLn " Missmatch. Skipping."
             return Nothing
           else do
             debugLn " VALID"
             debug "  Reading serial id ..."
             serial <- ctrlSerial
- 
+
             debugLn $ case serial of
               Nothing -> " Cannot read Serial. Skipping."
               Just _  -> "   VALID"
@@ -612,7 +615,7 @@ getCfg = do
 
   if null args then
     return $ defaultCfg { cHelp = True }
-    
+
   else case parseArguments defaultCfg args of
     Left err -> error err
     Right c -> return c
@@ -624,7 +627,7 @@ getCfg = do
         Right (Left z)  -> parseArguments z (y:xr)
         Left z          ->  Left z
       [x]    -> case parseArgument a x Nothing of
-        Right (Right z) -> Right z        
+        Right (Right z) -> Right z
         Right (Left z)  -> Right z
         Left z          -> Left z
       []     -> Right a
@@ -659,13 +662,13 @@ getCfg = do
               "flash"  -> case c2 of
                 "r" -> arg $ a { cMemOpt = return $ ReadFLASH c3 }
                 "w" -> arg $ a { cMemOpt = return $ WriteFLASH c3 }
-                "v" -> arg $ a { cMemOpt = return $ VerifyFLASH c3 }                
+                "v" -> arg $ a { cMemOpt = return $ VerifyFLASH c3 }
                 x   -> Left ("[-U] Invaid operation: " ++ x)
               x -> Left ("[-U] Unsupported memory type: " ++ x)
             _ -> assert False undefined
           _ -> assert False undefined
       x -> Left ("Invalid argument: " ++ x)
-                            
+
     simple = Right . Left
     arg    = Right . Right
 
@@ -673,7 +676,7 @@ getCfg = do
       ([],y)    -> Left ("[-U] Invalid format: " ++ y)
       (y,'#':z) -> Right (read y, read z)
       _         -> assert False undefined
- 
+
 -----------------------------------------------------------------------------
 
 -- | Print usage information.
@@ -683,7 +686,7 @@ prHelp
 
 prHelp = do
   toolname <- getProgName
-  mapM_ putStrLn 
+  mapM_ putStrLn
     [ "Usage: " ++ toolname ++ " [OPTIONS]..."
     , ""
     , "A programming tool for the iCE40 FPGA evaluation boards produced by"
@@ -699,7 +702,7 @@ prHelp = do
     , "                 registers of the interface. There corresponding meaning,"
     , "                 however, is device specific and, thus, not interpreted"
     , "                 by this tool"
-    , ""  
+    , ""
     , "      flash    : The SPI PROM of the device."
     , ""
     , "    Supported operations are:"
@@ -708,25 +711,25 @@ prHelp = do
     , "                 has to be a single one byte address, e.g., '0x4F'."
     , "                 If the flash ROM is selected, <data> has to be a "
     , "                 file path to which the read binary is written."
-    , ""  
+    , ""
     , "      w        : Write device memory. If VIO is selected, then <data>"
     , "                 has to be of the form <addr>#<byte>, where both"
     , "                 <addr> and <byte> are given by a single byte."
     , "                 If the flash ROM is selected, <data> has to be the"
     , "                 file path to the to be programmed binary."
-    , ""  
+    , ""
     , "      v        : Verify the device memory. The format of <data> is"
     , "                 similar to the one used for writing to the memory."
     , ""
     , "  -e,                             : Perform a chip erease."
     , "  -a                              : Disables bitstream verification and"
     , "                                    reads the whole memory block. (Use"
-    , "                                    this for debugging purposes only.)"  
+    , "                                    this for debugging purposes only.)"
     , "  -h,                             : Print this help and exit."
     , "  -v,                             : Verbose output."
     , "  -q,                             : Quiet output."
     , ""
-    , "Tested on iCEblink40-HX1K Evaluation Kit."  
-    ]  
+    , "Tested on iCEblink40-HX1K Evaluation Kit."
+    ]
 
------------------------------------------------------------------------------ 
+-----------------------------------------------------------------------------

@@ -3,9 +3,9 @@
 -- Module      :  VIO
 -- License     :  MIT (see the LICENSE file)
 -- Maintainer  :  Felix Klein (klein@react.uni-saarland.de)
--- 
+--
 -- Digilent Vritual I/O Expansion Debugging Interface.
--- 
+--
 -----------------------------------------------------------------------------
 
 module VIO
@@ -18,13 +18,16 @@ module VIO
 import Data.Word
   ( Word8
   )
-  
+
+import Control.Monad
+  ( unless
+  )
+
 import Control.Monad.State
   ( get
   , put
-  , unless
   )
-  
+
 import Control.Exception
   ( assert
   )
@@ -33,10 +36,10 @@ import Control.Exception
 
 import Data
   ( Register
-  , ST(..)      
+  , ST(..)
   , OP
   )
-  
+
 import Utils
   ( i2W
   , w42I
@@ -44,13 +47,13 @@ import Utils
   , readData
   , writeData
   , pureSendCmd
-  , sendCmd    
+  , sendCmd
   )
-  
+
 import Commands
   ( Command(..)
-  , SubCommand(..)  
-  )  
+  , SubCommand(..)
+  )
 
 -----------------------------------------------------------------------------
 
@@ -64,15 +67,15 @@ readRegister reg n = do
   initInterface
 
   -- send read request
-  (sc,x) <- sendCmd COMM READ [0x00, reg, i2W n, 0x00, 0x00, 0x00] 
-            
+  (sc,x) <- sendCmd COMM READ [0x00, reg, i2W n, 0x00, 0x00, 0x00]
+
   verify (sc == 0 && null x)
     "Read register error"
 
   -- read the data
   rs <- readData $ min 16 $ fromIntegral n
 
-  -- verify transfer count  
+  -- verify transfer count
   tc <- transferCount
   assert (tc < 0) $ return ()
 
@@ -83,7 +86,7 @@ readRegister reg n = do
 
 -----------------------------------------------------------------------------
 
--- | Writes the data 'bs' at register 'reg'.  
+-- | Writes the data 'bs' at register 'reg'.
 
 writeRegister
   :: Register -> [Word8] -> OP ()
@@ -96,17 +99,17 @@ writeRegister reg bs = do
 
   -- send write request
   (sc,x) <- sendCmd COMM WRITE [0x00, reg, i2W (length bs), 0x00, 0x00, 0x00]
-            
+
   verify (sc == 0 && null x)
     "Write register error"
 
   -- write the data
   writeData bs
 
-  -- verify transfer count  
+  -- verify transfer count
   tc <- transferCount
   assert (tc > 0) $ return ()
-  
+
   verify (tc == 1)
     "Invalid number of registers transferted"
 
@@ -117,20 +120,20 @@ transferCount
 
 transferCount = do
   initInterface
-  
-  (s,rs) <- sendCmd COMM TCNT [0x00] 
+
+  (s,rs) <- sendCmd COMM TCNT [0x00]
 
   if s >= 128 then do
     verify (length rs == 4)
       "No tranfer count received"
     return $ w42I rs
   else if s >= 64 then do
-    verify (length rs == 4) 
+    verify (length rs == 4)
       "No tranfer count received"
     return $ negate $ w42I rs
   else
     return 0
-  
+
 -----------------------------------------------------------------------------
 
 initInterface
@@ -147,4 +150,4 @@ initInterface = do
         cleanup st
       }
 
------------------------------------------------------------------------------    
+-----------------------------------------------------------------------------
